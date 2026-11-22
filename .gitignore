@@ -18,3 +18,4 @@ runtime/
 validation/*.log
 validation/*.png
 
+graphify-out/

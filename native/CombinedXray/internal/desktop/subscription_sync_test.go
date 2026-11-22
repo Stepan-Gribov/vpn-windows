@@ -112,6 +112,9 @@ func TestBundledOriginsRequireMatchingSigningIdentity(t *testing.T) {
 	}
 	foreign = alternate
 	foreign.KeyID = "0000000000000000"
+	if foreign.KeyID == alternate.KeyID {
+		foreign.KeyID = "1111111111111111"
+	}
 	if samePanelService(primary, foreign) {
 		t.Fatal("untrusted signing identity")
 	}
