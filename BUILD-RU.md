@@ -21,3 +21,13 @@
     go -C native/CombinedXray test -mod=readonly ./internal/desktop
 
 Системные тесты Wintun включаются отдельно переменной TNDTUN_SYSTEM_TEST=1. Они используют тестовые адаптеры и отдельные маршруты /32. Для них требуются права администратора и wintun.dll рядом с тестовыми исполняемыми файлами.
+
+## Публикация в GitHub Releases
+
+Установите GitHub CLI и выполните `gh auth login` под аккаунтом **Stepan-Gribov**. Для нового релиза укажите `version` и `fileVersion` в `project.json`, отправьте коммит в `main`, затем соберите и проверьте ZIP из этого коммита.
+
+В VS Code откройте **Terminal → Run Task → TnDtun: опубликовать готовый ZIP в GitHub Releases**. Задача берёт ZIP и файл `.sha256` из `dist`. Из PowerShell можно указать путь к готовому ZIP и проверить публикацию без записи флагом `-WhatIf`.
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-Windows.ps1
+
+ZIP и `SHA256SUMS.txt` публикуются в [закрытых Releases сборок](https://github.com/Stepan-Gribov/vpn-builds/releases). После проверки скачанного ZIP появляется страница версии с инструкцией и ссылкой на загрузку в [Releases исходников Windows](https://github.com/Stepan-Gribov/vpn-windows/releases). Для изменившегося ZIP используйте новый номер версии.
