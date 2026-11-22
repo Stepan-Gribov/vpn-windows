@@ -1,0 +1,19 @@
+{
+  "api_version": 1,
+  "package_schema": 1,
+  "algorithm": "Ed25519",
+  "api_base": "https://panel.example.invalid/v1",
+  "alternate_api_bases": [
+    "https://backup.example.invalid/v1"
+  ],
+  "key_id": "0000000000000000",
+  "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "dns_transport": {
+    "domain": "dns.example.invalid",
+    "publicKey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "resolver": "1.1.1.1:53",
+    "sessionCount": 4,
+    "autoDetectResolver": true,
+    "savedResolvers": []
+  }
+}

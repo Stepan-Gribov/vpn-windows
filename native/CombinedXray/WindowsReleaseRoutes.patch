@@ -1,0 +1,26 @@
+--- a/proxy/tun/tun_windows.go
++++ b/proxy/tun/tun_windows.go
+@@ -70,6 +70,7 @@
+ 		luid:     winipcfg.LUID(adapter.LUID()),
+ 	}
+ 
++	desktopRegister(tun)
+ 	return tun, nil
+ }
+ 
+@@ -196,6 +197,7 @@
+ 		return nil
+ 	}
+ 	t.closed = true
++	desktopUnregister(t)
+ 
+ 	if t.changeCallback != nil {
+ 		t.changeCallback.Unregister()
+@@ -257,6 +259,7 @@
+ 		return 0, nil, ErrQueueEmpty
+ 	}
+ 	if err != nil {
++		desktopNoteReadFailure(t)
+ 		return 0, nil, err
+ 	}
+ 

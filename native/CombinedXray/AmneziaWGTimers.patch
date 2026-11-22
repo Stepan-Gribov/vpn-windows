@@ -1,0 +1,12 @@
+--- a/device/timers.go
++++ b/device/timers.go
+@@ -37,8 +37,8 @@
+ 			return
+ 		}
+ 		duration := timer.duration
++		timer.duration = 0
+ 		timer.modifyingLock.Unlock()
+-		timer.duration = 0
+ 
+ 		expirationFunction(peer, duration)
+ 	})

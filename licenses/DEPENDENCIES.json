@@ -1,0 +1,568 @@
+[
+  {
+    "module": "github.com/KindlyVPN/foundation/transports",
+    "version": "v0.0.0",
+    "replacement": "../Recovery",
+    "notices": [
+      "licenses/github.com_KindlyVPN_foundation_transports/LICENSE",
+      "licenses/github.com_KindlyVPN_foundation_transports/THIRD_PARTY.md"
+    ]
+  },
+  {
+    "module": "github.com/amnezia-vpn/amneziawg-go/v3",
+    "version": "v3.1.20260828",
+    "replacement": "../../.build/awg",
+    "notices": [
+      "licenses/github.com_amnezia-vpn_amneziawg-go_v3/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/andybalholm/brotli",
+    "version": "v1.2.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_andybalholm_brotli/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/apernet/quic-go",
+    "version": "v0.59.1-0.20260425001925-6c6cc9bcb716",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_apernet_quic-go/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bdandy/go-errors",
+    "version": "v1.2.2",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bdandy_go-errors/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bdandy/go-socks4",
+    "version": "v1.2.3",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bdandy_go-socks4/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bogdanfinn/fhttp",
+    "version": "v0.6.8",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bogdanfinn_fhttp/GO-BSD-LICENSE",
+      "licenses/github.com_bogdanfinn_fhttp/NOTICE.txt",
+      "licenses/github.com_bogdanfinn_fhttp/UPSTREAM-README.md"
+    ]
+  },
+  {
+    "module": "github.com/bogdanfinn/quic-go-utls",
+    "version": "v1.0.9-utls",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bogdanfinn_quic-go-utls/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bogdanfinn/tls-client",
+    "version": "v1.14.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bogdanfinn_tls-client/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bogdanfinn/utls",
+    "version": "v1.7.7-barnius",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bogdanfinn_utls/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bogdanfinn/websocket",
+    "version": "v1.5.5-barnius",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bogdanfinn_websocket/AUTHORS",
+      "licenses/github.com_bogdanfinn_websocket/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/bschaatsbergen/dnsdialer",
+    "version": "v0.0.0-20251225104348-3e7610e8ea45",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_bschaatsbergen_dnsdialer/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/cacggghp/vk-turn-proxy",
+    "version": "v0.0.0",
+    "replacement": "../KindlyTurn/Source",
+    "notices": [
+      "licenses/github.com_cacggghp_vk-turn-proxy/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/cbeuw/connutil",
+    "version": "v1.0.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_cbeuw_connutil/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/cloudflare/circl",
+    "version": "v1.6.4",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_cloudflare_circl/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/coder/websocket",
+    "version": "v1.8.14",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_coder_websocket/LICENSE.txt"
+    ]
+  },
+  {
+    "module": "github.com/flynn/noise",
+    "version": "v1.0.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_flynn_noise/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/ghodss/yaml",
+    "version": "v1.0.1-0.20220118164431-d8423dcdf344",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_ghodss_yaml/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/google/btree",
+    "version": "v1.1.3",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_google_btree/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/google/uuid",
+    "version": "v1.6.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_google_uuid/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/gorilla/websocket",
+    "version": "v1.5.4-0.20250319132907-e064f32e3674",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_gorilla_websocket/AUTHORS",
+      "licenses/github.com_gorilla_websocket/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/hashicorp/golang-lru/v2",
+    "version": "v2.0.7",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_hashicorp_golang-lru_v2/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/juju/ratelimit",
+    "version": "v1.0.2",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_juju_ratelimit/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/klauspost/compress",
+    "version": "v1.18.6",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_klauspost_compress/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/klauspost/cpuid/v2",
+    "version": "v2.4.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_klauspost_cpuid_v2/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/klauspost/reedsolomon",
+    "version": "v1.14.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_klauspost_reedsolomon/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/makiuchi-d/gozxing",
+    "version": "v0.1.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_makiuchi-d_gozxing/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/miekg/dns",
+    "version": "v1.1.72",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_miekg_dns/AUTHORS",
+      "licenses/github.com_miekg_dns/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pelletier/go-toml",
+    "version": "v1.9.5",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pelletier_go-toml/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/dtls/v3",
+    "version": "v3.1.4",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_dtls_v3/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/logging",
+    "version": "v0.2.4",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_logging/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/randutil",
+    "version": "v0.1.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_randutil/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/stun/v3",
+    "version": "v3.1.6",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_stun_v3/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/transport/v4",
+    "version": "v4.0.2",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_transport_v4/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pion/turn/v5",
+    "version": "v5.0.9",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pion_turn_v5/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pires/go-proxyproto",
+    "version": "v0.14.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pires_go-proxyproto/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/pkg/errors",
+    "version": "v0.9.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_pkg_errors/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/quic-go/qpack",
+    "version": "v0.6.0",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_quic-go_qpack/LICENSE.md"
+    ]
+  },
+  {
+    "module": "github.com/refraction-networking/utls",
+    "version": "v1.8.3-0.20260301010127-aa6edf4b11af",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_refraction-networking_utls/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/robfig/cron/v3",
+    "version": "v3.0.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_robfig_cron_v3/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/sagernet/sing",
+    "version": "v0.5.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_sagernet_sing/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/sagernet/sing-shadowsocks",
+    "version": "v0.2.7",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_sagernet_sing-shadowsocks/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/tam7t/hpkp",
+    "version": "v0.0.0-20160821193359-2b70b4024ed5",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_tam7t_hpkp/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/tjfoc/gmsm",
+    "version": "v1.4.1",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_tjfoc_gmsm/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/wlynxg/anet",
+    "version": "v0.0.5",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_wlynxg_anet/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/xtaci/kcp-go/v5",
+    "version": "v5.6.72",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_xtaci_kcp-go_v5/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/xtaci/smux",
+    "version": "v1.5.57",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_xtaci_smux/LICENSE"
+    ]
+  },
+  {
+    "module": "github.com/xtls/reality",
+    "version": "v0.0.0-20260322125925-9234c772ba8f",
+    "replacement": null,
+    "notices": [
+      "licenses/github.com_xtls_reality/LICENSE",
+      "licenses/github.com_xtls_reality/LICENSE-Go"
+    ]
+  },
+  {
+    "module": "github.com/xtls/xray-core",
+    "version": "v0.0.0-20260704054728-50c452881eb9",
+    "replacement": "../../.build/xray",
+    "notices": [
+      "licenses/github.com_xtls_xray-core/LICENSE"
+    ]
+  },
+  {
+    "module": "go4.org/netipx",
+    "version": "v0.0.0-20231129151722-fdeea329fbba",
+    "replacement": null,
+    "notices": [
+      "licenses/go4.org_netipx/AUTHORS",
+      "licenses/go4.org_netipx/LICENSE"
+    ]
+  },
+  {
+    "module": "golang.org/x/crypto",
+    "version": "v0.53.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_crypto/LICENSE",
+      "licenses/golang.org_x_crypto/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/exp",
+    "version": "v0.0.0-20260603202125-055de637280b",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_exp/LICENSE",
+      "licenses/golang.org_x_exp/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/net",
+    "version": "v0.56.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_net/LICENSE",
+      "licenses/golang.org_x_net/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/sync",
+    "version": "v0.21.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_sync/LICENSE",
+      "licenses/golang.org_x_sync/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/sys",
+    "version": "v0.46.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_sys/LICENSE",
+      "licenses/golang.org_x_sys/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/text",
+    "version": "v0.38.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_text/LICENSE",
+      "licenses/golang.org_x_text/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/time",
+    "version": "v0.15.0",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_time/LICENSE",
+      "licenses/golang.org_x_time/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.org/x/xerrors",
+    "version": "v0.0.0-20240903120638-7835f813f4da",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.org_x_xerrors/LICENSE",
+      "licenses/golang.org_x_xerrors/PATENTS"
+    ]
+  },
+  {
+    "module": "golang.zx2c4.com/wintun",
+    "version": "v0.0.0-20230126152724-0fa3db229ce2",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.zx2c4.com_wintun/LICENSE"
+    ]
+  },
+  {
+    "module": "golang.zx2c4.com/wireguard",
+    "version": "v0.0.0-20250521234502-f333402bd9cb",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.zx2c4.com_wireguard/LICENSE"
+    ]
+  },
+  {
+    "module": "golang.zx2c4.com/wireguard/windows",
+    "version": "v1.0.1",
+    "replacement": null,
+    "notices": [
+      "licenses/golang.zx2c4.com_wireguard_windows/COPYING"
+    ]
+  },
+  {
+    "module": "google.golang.org/genproto/googleapis/rpc",
+    "version": "v0.0.0-20260526163538-3dc84a4a5aaa",
+    "replacement": null,
+    "notices": [
+      "licenses/google.golang.org_genproto_googleapis_rpc/LICENSE"
+    ]
+  },
+  {
+    "module": "google.golang.org/grpc",
+    "version": "v1.82.1",
+    "replacement": null,
+    "notices": [
+      "licenses/google.golang.org_grpc/AUTHORS",
+      "licenses/google.golang.org_grpc/LICENSE",
+      "licenses/google.golang.org_grpc/NOTICE.txt"
+    ]
+  },
+  {
+    "module": "google.golang.org/protobuf",
+    "version": "v1.36.11",
+    "replacement": null,
+    "notices": [
+      "licenses/google.golang.org_protobuf/LICENSE",
+      "licenses/google.golang.org_protobuf/PATENTS"
+    ]
+  },
+  {
+    "module": "gopkg.in/yaml.v2",
+    "version": "v2.4.0",
+    "replacement": null,
+    "notices": [
+      "licenses/gopkg.in_yaml.v2/LICENSE",
+      "licenses/gopkg.in_yaml.v2/LICENSE.libyaml",
+      "licenses/gopkg.in_yaml.v2/NOTICE"
+    ]
+  },
+  {
+    "module": "gvisor.dev/gvisor",
+    "version": "v0.0.0-20260122175437-89a5d21be8f0",
+    "replacement": null,
+    "notices": [
+      "licenses/gvisor.dev_gvisor/AUTHORS",
+      "licenses/gvisor.dev_gvisor/LICENSE"
+    ]
+  },
+  {
+    "module": "lukechampine.com/blake3",
+    "version": "v1.4.1",
+    "replacement": null,
+    "notices": [
+      "licenses/lukechampine.com_blake3/LICENSE"
+    ]
+  },
+  {
+    "module": "www.bamsoftware.com/git/dnstt.git",
+    "version": "v0.0.0",
+    "replacement": "../Recovery/third_party/dnstt",
+    "notices": [
+      "licenses/www.bamsoftware.com_git_dnstt.git/COPYING"
+    ]
+  }
+]

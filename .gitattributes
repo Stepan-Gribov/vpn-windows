@@ -1,0 +1,2 @@
+# Native module-cache sources use LF; patch context must keep the same endings.
+*.patch text eol=lf

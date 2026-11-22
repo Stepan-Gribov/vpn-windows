@@ -1,0 +1,9 @@
+{
+  "name": "TnDtun",
+  "version": "1.0.0-preview.4",
+  "fileVersion": "1.0.0.4",
+  "target": "windows-x64",
+  "framework": ".NET Framework 4.8",
+  "goMinimum": "1.27",
+  "transports": ["Amnezia", "VK TURN", "DNS/DNSTT"]
+}

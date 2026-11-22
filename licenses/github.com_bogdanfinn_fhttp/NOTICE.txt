@@ -1,0 +1,1 @@
+fhttp v0.6.8 is a net/http fork. Its Go source headers retain The Go Authors copyright and reference the Go BSD license, reproduced here. The module archive does not include a top-level LICENSE file. Upstream credits are retained in UPSTREAM-README.md. Source: https://github.com/bogdanfinn/fhttp/tree/v0.6.8

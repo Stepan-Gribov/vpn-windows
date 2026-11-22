@@ -1,0 +1,52 @@
+--- a/transport/internet/system_dialer.go
++++ b/transport/internet/system_dialer.go
+@@ -2,6 +2,7 @@
+ 
+ import (
+ 	"context"
++ "runtime"
+ 	"sync"
+ 	"syscall"
+ 	"time"
+@@ -64,7 +65,7 @@
+ 		}
+ 		lc.Control = func(network, address string, c syscall.RawConn) error {
+ 			for _, ctl := range Controllers {
+-				if err := ctl(network, address, c); err != nil {
++				if err := ctl(network, destAddr.String(), c); err != nil {
+ 					errors.LogInfoInner(ctx, err, "failed to apply external controller")
+ 				}
+ 			}
+@@ -76,7 +77,13 @@
+ 				}
+ 			})
+ 		}
+-		packetConn, err := lc.ListenPacket(ctx, srcAddr.Network(), srcAddr.String())
++		network := srcAddr.Network()
++        if runtime.GOOS == "windows" {
++            // Windows interface-bound dual-stack sockets cannot safely send
++            // IPv4 datagrams through an IPv6-only physical interface binding.
++            if destAddr.IP.To4() != nil { network = "udp4" } else { network = "udp6"; if v,ok:=srcAddr.(*net.UDPAddr);ok && v.IP.IsUnspecified(){v.IP=make([]byte,16)} }
++        }
++        packetConn, err := lc.ListenPacket(ctx, network, srcAddr.String())
+ 		if err != nil {
+ 			return nil, err
+ 		}
+--- a/proxy/tun/handler.go
++++ b/proxy/tun/handler.go
+@@ -172,11 +172,15 @@
+ 	}
+ 	source := net.DestinationFromAddr(remote)
+ 	if t.uplinkCounter != nil || t.downlinkCounter != nil {
++        if _, packet := conn.(buf.Reader); packet {
++            conn = &desktopPacketCounters{Conn:conn, up:t.uplinkCounter, down:t.downlinkCounter}
++        } else {
+ 		conn = &stat.CounterConnection{
+ 			Connection:   conn,
+ 			ReadCounter:  t.uplinkCounter,
+ 			WriteCounter: t.downlinkCounter,
+ 		}
++        }
+ 	}
+ 
+ 	inbound := session.Inbound{

@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "TnDtun: окно сборки и версия",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/Build-Panel.ps1"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": [],
+      "runOptions": {"instanceLimit": 1},
+      "presentation": {"reveal": "silent", "showReuseMessage": false}
+    },
+    {
+      "label": "TnDtun: собрать ZIP без окна",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/Build-Windows.ps1"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": [],
+      "presentation": {"reveal": "always"}
+    }
+  ]
+}

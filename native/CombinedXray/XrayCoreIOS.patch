@@ -1,0 +1,337 @@
+diff --git a/proxy/tun/stack_gvisor.go b/proxy/tun/stack_gvisor.go
+index 8584616..16fe2e1 100644
+--- a/proxy/tun/stack_gvisor.go
++++ b/proxy/tun/stack_gvisor.go
+@@ -2,6 +2,7 @@ package tun
+ 
+ import (
+ 	"context"
++	"sync/atomic"
+ 	"time"
+ 
+ 	"github.com/xtls/xray-core/common/errors"
+@@ -24,14 +25,36 @@ const (
+ 	defaultNIC tcpip.NICID = 1
+ 
+ 	tcpRXBufMinSize = tcp.MinBufferSize
+-	tcpRXBufDefSize = tcp.DefaultSendBufferSize
+-	tcpRXBufMaxSize = 8 << 20 // 8MiB
++	tcpRXBufDefSize = tcp.MinBufferSize * 2
+ 
+ 	tcpTXBufMinSize = tcp.MinBufferSize
+-	tcpTXBufDefSize = tcp.DefaultReceiveBufferSize
+-	tcpTXBufMaxSize = 6 << 20 // 6MiB
++	tcpTXBufDefSize = tcp.MinBufferSize * 2
+ )
+ 
++var (
++	tcpRXBufMaxSize = 1024 << 10
++	tcpTXBufMaxSize = 1024 << 10
++	tcpMaxInFlight  = 512
++)
++
++// Disabled IPv6 must fail before a virtual TCP handshake succeeds. Otherwise
++// Happy Eyeballs commits to IPv6 and treats the later blackhole's HTTP payload
++// as a fatal TLS error, never attempting a working IPv4 address.
++// Port 53 remains the app's intercepted DNS control channel in either family.
++var ipv6Blocked atomic.Bool
++
++func SetIPv6Enabled(enabled bool) { ipv6Blocked.Store(!enabled) }
++
++func SetTCPBufMaxKB(kb int) {
++	size := kb * 1024
++	tcpRXBufMaxSize = size
++	tcpTXBufMaxSize = size
++}
++
++func SetTCPMaxInFlight(n int) {
++	tcpMaxInFlight = n
++}
++
+ // stackGVisor is ip stack implemented by gVisor package
+ type stackGVisor struct {
+ 	ctx         context.Context
+@@ -66,7 +89,11 @@ func (t *stackGVisor) Start() error {
+ 		return err
+ 	}
+ 
+-	tcpForwarder := tcp.NewForwarder(ipStack, 0, 65535, func(r *tcp.ForwarderRequest) {
++	tcpForwarder := tcp.NewForwarder(ipStack, 0, tcpMaxInFlight, func(r *tcp.ForwarderRequest) {
++		if ipv6Blocked.Load() && r.ID().LocalAddress.BitLen() == 128 && r.ID().LocalPort != 53 {
++			r.Complete(true)
++			return
++		}
+ 		go func(r *tcp.ForwarderRequest) {
+ 			var wq waiter.Queue
+ 			id := r.ID()
+@@ -101,6 +128,11 @@ func (t *stackGVisor) Start() error {
+ 	// Use custom UDP packet handler, instead of strict gVisor forwarder, for FullCone NAT support
+ 	udpForwarder := newUdpConnectionHandler(t.handler.HandleConnection, t.writeRawUDPPacket)
+ 	ipStack.SetTransportProtocolHandler(udp.ProtocolNumber, func(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
++		if ipv6Blocked.Load() && id.LocalAddress.BitLen() == 128 && id.LocalPort != 53 {
++			// Let gVisor validate the datagram and return ICMPv6 port unreachable.
++			// DNS keeps its existing port-53 interception; other IPv6 cannot escape.
++			return false
++		}
+ 		data := pkt.Clone().Data().AsRange().ToSlice()
+ 		// if len(data) == 0 {
+ 		// 	return false
+diff --git a/proxy/tun/tun_darwin.go b/proxy/tun/tun_darwin.go
+index fdaafd3..27b838d 100644
+--- a/proxy/tun/tun_darwin.go
++++ b/proxy/tun/tun_darwin.go
+@@ -4,8 +4,10 @@ package tun
+ 
+ import (
+ 	"context"
++	"encoding/binary"
+ 	"errors"
+ 	"fmt"
++	"io"
+ 	"net"
+ 	"net/netip"
+ 	"os"
+@@ -42,10 +44,11 @@ const (
+ func procyield(cycles uint32)
+ 
+ type DarwinTun struct {
+-	tunFile *os.File
+-	options *Config
+-	tunFd   int
+-	ownsFd  bool // true for macOS (we created the fd), false for iOS (fd from system)
++	tunFile  *os.File
++	options  *Config
++	tunFd    int
++	ownsFd   bool // true for macOS (we created the fd), false for iOS (fd from system)
++	isStream bool // true for the AF_UNIX SOCK_STREAM used by NetworkExtension
+ 
+ 	routeMonitor     *os.File
+ 	routeMonitorOnce sync.Once
+@@ -67,15 +70,25 @@ func NewTun(options *Config) (Tun, error) {
+ 			return nil, err
+ 		}
+ 
+-		if err = unix.SetNonblock(fd, true); err != nil {
+-			return nil, err
++		sockType, sockErr := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_TYPE)
++		isStream := sockErr == nil && sockType == unix.SOCK_STREAM
++
++		// The NetworkExtension bridge uses a SOCK_STREAM socketpair. Keep that
++		// descriptor blocking so io.ReadFull can preserve frame boundaries while
++		// waiting for the first packet. A non-blocking stream returns EAGAIN before
++		// traffic arrives and the dispatcher treats it as a fatal interface failure.
++		if !isStream {
++			if err = unix.SetNonblock(fd, true); err != nil {
++				return nil, err
++			}
+ 		}
+ 
+ 		return &DarwinTun{
+-			tunFile: os.NewFile(uintptr(fd), "utun"),
+-			options: options,
+-			tunFd:   fd,
+-			ownsFd:  false,
++			tunFile:  os.NewFile(uintptr(fd), "utun"),
++			options:  options,
++			tunFd:    fd,
++			ownsFd:   false,
++			isStream: isStream,
+ 		}, nil
+ 	}
+ 
+@@ -202,6 +215,10 @@ func (t *DarwinTun) WritePacket(packet *stack.PacketBuffer) tcpip.Error {
+ // It is expected that the method will not block, rather return ErrQueueEmpty when there is nothing on the line,
+ // which will make the stack call Wait which should implement desired push-back
+ func (t *DarwinTun) ReadPacket() (byte, *stack.PacketBuffer, error) {
++	if t.isStream {
++		return t.readPacketStream()
++	}
++
+ 	// request memory to write from reusable buffer pool
+ 	b := buf.NewWithSize(int32(t.options.MTU) + utunHeaderSize)
+ 
+@@ -234,6 +251,54 @@ func (t *DarwinTun) ReadPacket() (byte, *stack.PacketBuffer, error) {
+ 	}), nil
+ }
+ 
++// readPacketStream restores packet boundaries over NetworkExtension's socketpair.
++// Frames use the Darwin utun header followed by one IPv4 or IPv6 packet.
++func (t *DarwinTun) readPacketStream() (byte, *stack.PacketBuffer, error) {
++	var header [utunHeaderSize]byte
++	if _, err := io.ReadFull(t.tunFile, header[:]); err != nil {
++		return 0, nil, err
++	}
++
++	var packet []byte
++	var version byte
++	switch header[3] {
++	case unix.AF_INET:
++		version = 4
++		var ipv4Header [20]byte
++		if _, err := io.ReadFull(t.tunFile, ipv4Header[:]); err != nil {
++			return 0, nil, err
++		}
++		totalLength := int(binary.BigEndian.Uint16(ipv4Header[2:4]))
++		if totalLength < len(ipv4Header) {
++			return 0, nil, errors.New("invalid IPv4 total length")
++		}
++		packet = make([]byte, totalLength)
++		copy(packet, ipv4Header[:])
++		if _, err := io.ReadFull(t.tunFile, packet[len(ipv4Header):]); err != nil {
++			return 0, nil, err
++		}
++	case unix.AF_INET6:
++		version = 6
++		var ipv6Header [40]byte
++		if _, err := io.ReadFull(t.tunFile, ipv6Header[:]); err != nil {
++			return 0, nil, err
++		}
++		payloadLength := int(binary.BigEndian.Uint16(ipv6Header[4:6]))
++		packet = make([]byte, len(ipv6Header)+payloadLength)
++		copy(packet, ipv6Header[:])
++		if _, err := io.ReadFull(t.tunFile, packet[len(ipv6Header):]); err != nil {
++			return 0, nil, err
++		}
++	default:
++		return 0, nil, errors.New("unknown AF in stream packet header")
++	}
++
++	return version, stack.NewPacketBuffer(stack.PacketBufferOptions{
++		Payload:           buffer.MakeWithData(packet),
++		IsForwardedPacket: true,
++	}), nil
++}
++
+ // Wait some cpu cycles
+ func (t *DarwinTun) Wait() {
+ 	procyield(1)
+diff --git a/proxy/tun/udp_fullcone.go b/proxy/tun/udp_fullcone.go
+index 1a1cb08..11e7892 100644
+--- a/proxy/tun/udp_fullcone.go
++++ b/proxy/tun/udp_fullcone.go
+@@ -16,6 +16,12 @@ type packet struct {
+ 	dest *net.Destination
+ }
+ 
++var maxUDPConns = 256
++
++func SetMaxUDPConns(n int) {
++	maxUDPConns = n
++}
++
+ // sub-handler specifically for udp connections under main handler
+ type udpConnectionHandler struct {
+ 	sync.RWMutex
+@@ -60,6 +66,9 @@ func (u *udpConnectionHandler) HandlePacket(src net.Destination, dst net.Destina
+ 
+ 	conn, found = u.udpConns[src]
+ 	if !found {
++		if len(u.udpConns) >= maxUDPConns {
++			return
++		}
+ 		egress := make(chan *packet, 1024)
+ 		conn = &udpConn{handler: u, egress: egress, src: src, dst: dst}
+ 		u.udpConns[src] = conn
+diff --git a/transport/internet/tls/config.go b/transport/internet/tls/config.go
+index 0c88780..1754f74 100644
+--- a/transport/internet/tls/config.go
++++ b/transport/internet/tls/config.go
+@@ -23,6 +23,10 @@ import (
+ 
+ var globalSessionCache = tls.NewLRUClientSessionCache(128)
+ 
++func ResetSessionCache() {
++	globalSessionCache = tls.NewLRUClientSessionCache(128)
++}
++
+ // ParseCertificate converts a cert.Certificate to Certificate.
+ func ParseCertificate(c *cert.Certificate) *Certificate {
+ 	if c != nil {
+diff --git a/proxy/tun/stack_gvisor_endpoint.go b/proxy/tun/stack_gvisor_endpoint.go
+index 26d8eca..b217c5c 100644
+--- a/proxy/tun/stack_gvisor_endpoint.go
++++ b/proxy/tun/stack_gvisor_endpoint.go
+@@ -3,6 +3,7 @@ package tun
+ import (
+ 	"context"
+ 	"errors"
++	"sync"
+ 
+ 	"gvisor.dev/gvisor/pkg/tcpip"
+ 	"gvisor.dev/gvisor/pkg/tcpip/header"
+@@ -21,9 +22,11 @@ type GVisorDevice interface {
+ var _ stack.LinkEndpoint = (*LinkEndpoint)(nil)
+ 
+ type LinkEndpoint struct {
+-	deviceMTU        uint32
+-	device           GVisorDevice
+-	dispatcherCancel context.CancelFunc
++	deviceMTU            uint32
++	device               GVisorDevice
++	dispatcherMu         sync.Mutex
++	dispatcherGeneration uint64
++	dispatcherCancel     context.CancelFunc
+ }
+ 
+ func (e *LinkEndpoint) MTU() uint32 {
+@@ -51,6 +54,9 @@ func (e *LinkEndpoint) Capabilities() stack.LinkEndpointCapabilities {
+ }
+ 
+ func (e *LinkEndpoint) Attach(dispatcher stack.NetworkDispatcher) {
++	e.dispatcherMu.Lock()
++	defer e.dispatcherMu.Unlock()
++	e.dispatcherGeneration++
+ 	if e.dispatcherCancel != nil {
+ 		e.dispatcherCancel()
+ 		e.dispatcherCancel = nil
+@@ -58,12 +64,14 @@ func (e *LinkEndpoint) Attach(dispatcher stack.NetworkDispatcher) {
+ 
+ 	if dispatcher != nil {
+ 		ctx, cancel := context.WithCancel(context.Background())
+-		go e.dispatchLoop(ctx, dispatcher)
++		go e.dispatchLoop(ctx, dispatcher, e.dispatcherGeneration)
+ 		e.dispatcherCancel = cancel
+ 	}
+ }
+ 
+ func (e *LinkEndpoint) IsAttached() bool {
++	e.dispatcherMu.Lock()
++	defer e.dispatcherMu.Unlock()
+ 	return e.dispatcherCancel != nil
+ }
+ 
+@@ -82,8 +90,14 @@ func (e *LinkEndpoint) ParseHeader(ptr *stack.PacketBuffer) bool {
+ 	return true
+ }
+ 
+-func (e *LinkEndpoint) Close() {
+-	if e.dispatcherCancel != nil {
++func (e *LinkEndpoint) Close() { e.Attach(nil) }
++
++// A failed reader belongs to one attachment only. It must never detach a
++// replacement reader after Close/Attach or race the stop path's cancellation.
++func (e *LinkEndpoint) detachGeneration(generation uint64) {
++	e.dispatcherMu.Lock()
++	defer e.dispatcherMu.Unlock()
++	if e.dispatcherGeneration == generation && e.dispatcherCancel != nil {
+ 		e.dispatcherCancel()
+ 		e.dispatcherCancel = nil
+ 	}
+@@ -107,7 +121,8 @@ func (e *LinkEndpoint) WritePackets(packetBufferList stack.PacketBufferList) (in
+ 	return n, nil
+ }
+ 
+-func (e *LinkEndpoint) dispatchLoop(ctx context.Context, dispatcher stack.NetworkDispatcher) {
++func (e *LinkEndpoint) dispatchLoop(ctx context.Context, dispatcher stack.NetworkDispatcher, generation uint64) {
++	defer e.detachGeneration(generation)
+ 	var networkProtocolNumber tcpip.NetworkProtocolNumber
+ 	var version byte
+ 	var packet *stack.PacketBuffer
+@@ -126,7 +141,6 @@ func (e *LinkEndpoint) dispatchLoop(ctx context.Context, dispatcher stack.Networ
+ 			}
+ 			// stop dispatcher loop on any other interface failure
+ 			if err != nil {
+-				e.Attach(nil)
+ 				return
+ 			}
+ 

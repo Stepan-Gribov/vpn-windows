@@ -24,7 +24,17 @@ class SettingsEditor:Editor {
   channels.SelectedIndex=channelIndex<0?3:channelIndex;
   Row("Каналы VK TURN",channels);
   Row("Версия",new Label{Text=J.Text(rpc.Last,"version"),Dock=DockStyle.Fill});
-Row("IPv6",ipv6);var servers=Style.Edit(string.Join(Environment.NewLine,J.Rows(J.Get(s,"dnsServers")).Select(Convert.ToString)),true);Row("DNS приложения",servers,70);var split=J.Obj(J.Get(s,"splitTunneling"));var choice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};choice.Items.AddRange(new object[]{"Весь трафик через VPN","Выбранные адреса без VPN","Только выбранные через VPN"});choice.SelectedIndex=J.Text(split,"mode")=="bypassSelected"?1:J.Text(split,"mode")=="tunnelSelected"?2:0;Row("Сплит-туннель",choice);var bypass=Style.Edit(J.Encode(J.Get(split,"bypassEntries")??new object[0]),true);var tunnel=Style.Edit(J.Encode(J.Get(split,"tunnelEntries")??new object[0]),true);Row("Без VPN · JSON или адреса по строке",bypass,130);Row("Через VPN · JSON или адреса по строке",tunnel,130);foreach(var pair in new[]{Tuple.Create("Импорт списка без VPN",bypass),Tuple.Create("Импорт списка через VPN",tunnel)}){var p=pair;var b=Style.Button(p.Item1,async(a,e)=>{var path=Style.Choose(false,"JSON (*.json)|*.json");if(path==null)return;try{p.Item2.Text=J.Encode(await rpc.Call("parse_entries",J.D("path",path)));}catch(Exception ex){Style.Error(this,ex);}});Row("Список",b);}Row("",new Label{Text="Оба списка сохраняются независимо. Изменения применятся после переподключения.",Dock=DockStyle.Fill},60);
+Row("IPv6",ipv6);var servers=Style.Edit(string.Join(Environment.NewLine,J.Rows(J.Get(s,"dnsServers")).Select(Convert.ToString)),true);Row("DNS приложения",servers,70);var split=J.Obj(J.Get(s,"splitTunneling"));var choice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};choice.Items.AddRange(new object[]{"Весь трафик через VPN","Выбранные адреса без VPN","Только выбранные через VPN"});choice.SelectedIndex=J.Text(split,"mode")=="bypassSelected"?1:J.Text(split,"mode")=="tunnelSelected"?2:0;Row("Сплит-туннель",choice);
+  var amneziaSplit=new CheckBox{Text="Использовать списки для Amnezia",
+   Checked=J.Get(s,"amneziaSplitEnabled")==null||J.Bool(s,"amneziaSplitEnabled"),Dock=DockStyle.Fill};
+  Row("Amnezia",amneziaSplit);
+  var restoreValues=new[]{5,15,30,60,0};
+  var restoreSplit=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill};
+  restoreSplit.Items.AddRange(new object[]{"Через 5 минут","Через 15 минут","Через 30 минут","Через час","При отключении"});
+  int restoreIndex=J.Get(s,"fullTunnelMinutes")==null?1:Array.IndexOf(restoreValues,(int)J.Num(s,"fullTunnelMinutes"));
+  restoreSplit.SelectedIndex=restoreIndex<0?1:restoreIndex;
+  Row("Вернуть сплит-туннель",restoreSplit);
+var bypass=Style.Edit(J.Encode(J.Get(split,"bypassEntries")??new object[0]),true);var tunnel=Style.Edit(J.Encode(J.Get(split,"tunnelEntries")??new object[0]),true);Row("Без VPN · JSON или адреса по строке",bypass,130);Row("Через VPN · JSON или адреса по строке",tunnel,130);foreach(var pair in new[]{Tuple.Create("Импорт списка без VPN",bypass),Tuple.Create("Импорт списка через VPN",tunnel)}){var p=pair;var b=Style.Button(p.Item1,async(a,e)=>{var path=Style.Choose(false,"JSON (*.json)|*.json");if(path==null)return;try{p.Item2.Text=J.Encode(await rpc.Call("parse_entries",J.D("path",path)));}catch(Exception ex){Style.Error(this,ex);}});Row("Список",b);}Row("",new Label{Text="Оба списка сохраняются независимо. Изменения применятся после переподключения.",Dock=DockStyle.Fill},60);
   Row("Подключения",Style.Button("Добавить подключение вручную",(sender,e)=>{
    using(var editor=new ProfileEditor(rpc,J.D("mode",profileMode))) editor.ShowDialog(this);
   }));
@@ -36,7 +46,7 @@ Row("IPv6",ipv6);var servers=Style.Edit(string.Join(Environment.NewLine,J.Rows(J
   import.Click+=(sender,e)=>menu.Show(import,0,import.Height);
   Disposed+=(sender,e)=>menu.Dispose();
   Row("",import);
-  Actions.Controls.Add(Style.Button("Сохранить",async(a,e)=>{try{Func<TextBox,string> text=box=>box.Text.Trim().StartsWith("[")||box.Text.Trim().StartsWith("{")?box.Text:J.Encode(box.Lines.Where(x=>!string.IsNullOrWhiteSpace(x)).ToArray());var b=await rpc.Call("parse_entries",J.D("text",text(bypass)));var t=await rpc.Call("parse_entries",J.D("text",text(tunnel)));var next=new Dictionary<string,object>(s);next["autoCaptcha"]=ac.Checked;next["autoRecovery"]=ar.Checked;next["autoConnectOnLaunch"]=launch.Checked;next["turnSessionCount"]=channelCounts[channels.SelectedIndex];next["ipv6Enabled"]=ipv6.Checked;next["turnCheckInterval"]=(int)interval.Value;next["dnsServers"]=servers.Lines.Where(x=>!string.IsNullOrWhiteSpace(x)).ToArray();next["splitTunneling"]=J.D("mode",new[]{"disabled","bypassSelected","tunnelSelected"}[choice.SelectedIndex],"bypassEntries",b,"tunnelEntries",t);await rpc.Call("settings",J.D("settings",next));Close();}catch(Exception ex){Style.Error(this,ex);}},true));}
+  Actions.Controls.Add(Style.Button("Сохранить",async(a,e)=>{try{Func<TextBox,string> text=box=>box.Text.Trim().StartsWith("[")||box.Text.Trim().StartsWith("{")?box.Text:J.Encode(box.Lines.Where(x=>!string.IsNullOrWhiteSpace(x)).ToArray());var b=await rpc.Call("parse_entries",J.D("text",text(bypass)));var t=await rpc.Call("parse_entries",J.D("text",text(tunnel)));var next=new Dictionary<string,object>(s);next["autoCaptcha"]=ac.Checked;next["autoRecovery"]=ar.Checked;next["autoConnectOnLaunch"]=launch.Checked;next["turnSessionCount"]=channelCounts[channels.SelectedIndex];next["amneziaSplitEnabled"]=amneziaSplit.Checked;next["fullTunnelMinutes"]=restoreValues[restoreSplit.SelectedIndex];next["ipv6Enabled"]=ipv6.Checked;next["turnCheckInterval"]=(int)interval.Value;next["dnsServers"]=servers.Lines.Where(x=>!string.IsNullOrWhiteSpace(x)).ToArray();next["splitTunneling"]=J.D("mode",new[]{"disabled","bypassSelected","tunnelSelected"}[choice.SelectedIndex],"bypassEntries",b,"tunnelEntries",t);await rpc.Call("settings",J.D("settings",next));Close();}catch(Exception ex){Style.Error(this,ex);}},true));}
  async Task Import(string value,bool clipboard,bool qr){try{if(clipboard)value=Clipboard.GetText();if(value==null){var path=Style.Choose(false,qr?"Изображения|*.png;*.jpg;*.jpeg;*.gif":"Профили|*.json;*.conf;*.txt|Все файлы|*.*");if(path==null)return;if(qr)value=Convert.ToString(await rpc.Call("qr",J.D("path",path)));else{var p=await rpc.Call("import_profile",J.D("path",path));new ProfileEditor(rpc,p).ShowDialog(this);return;}}if(value.Trim().StartsWith("tndtun:",StringComparison.OrdinalIgnoreCase)){await Subscriptions.Activate(this,rpc,value);return;}var profile=await rpc.Call("import_profile",J.D("text",value));new ProfileEditor(rpc,profile).ShowDialog(this);}catch(Exception e){Style.Error(this,e);}}
 }
 static class SubscriptionDisplay {
@@ -142,6 +152,9 @@ class Subscriptions:Form {
 class MainForm:Form {Rpc rpc;ListView profiles=new ListView{Dock=DockStyle.Fill,View=View.Details,FullRowSelect=true,HideSelection=false,MultiSelect=false};Label stateLabel=new Label(),caption=new Label(),metrics=new Label(),message=new Label();
  readonly Label subscriptionTime=SubscriptionDisplay.TimeLabel();
  Button refreshSubscriptions,connectionAction;
+ readonly CheckBox fullTunnel=new CheckBox{Text="Всё в туннель",AutoSize=true,Margin=new Padding(4,4,4,4)};
+ readonly ToolTip routingTip=new ToolTip();
+ bool applyingRouting, requestingRouting;
  bool refreshingSubscriptions;Button primary;NotifyIcon tray;string mode="amnezia";Dictionary<string,object> current=new Dictionary<string,object>();bool exiting,updating,modeLoaded;readonly Dictionary<string,Button> modeButtons=new Dictionary<string,Button>();public MainForm(Rpc r){rpc=r;Text="TnDtun";Style.Form(this);Size=new Size(870,720);MinimumSize=new Size(680,540);var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=7,Padding=new Padding(18)};layout.RowStyles.Add(new RowStyle(SizeType.Absolute,60));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,48));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,142));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,48));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,48));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,52));var title=new Label{Text="TnDtun",Font=new Font("Segoe UI",25,FontStyle.Bold),ForeColor=Style.Navy,Dock=DockStyle.Fill};layout.Controls.Add(title,0,0);
  var access=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=3,RowCount=1,Margin=new Padding(0,0,0,3)};
  foreach(float width in new[]{35f,35f,30f})access.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,width));
@@ -155,26 +168,81 @@ class MainForm:Form {Rpc rpc;ListView profiles=new ListView{Dock=DockStyle.Fill,
  access.Controls.Add(SubscriptionDisplay.RefreshBlock(refreshSubscriptions,subscriptionTime),1,0);
  access.Controls.Add(settings,2,0);
  layout.Controls.Add(access,0,1);
-var modes=new FlowLayoutPanel{Dock=DockStyle.Fill};foreach(var pair in new[]{Tuple.Create("Amnezia","amnezia"),Tuple.Create("VK TURN","turn"),Tuple.Create("DNS-туннель","dns")}){var p=pair;var button=Style.Button(p.Item1,async(s,e)=>{mode=p.Item2;modeLoaded=true;Apply(current);try{await rpc.Call("mode",J.D("text",mode));}catch(Exception ex){Style.Error(this,ex);}});modeButtons[p.Item2]=button;modes.Controls.Add(button);}layout.Controls.Add(modes,0,3);profiles.OwnerDraw=true;profiles.DrawColumnHeader+=(s,e)=>e.DrawDefault=true;profiles.DrawSubItem+=DrawProfileCell;var card=new TableLayoutPanel{Dock=DockStyle.Fill,BackColor=Color.White,Padding=new Padding(12),ColumnCount=2,RowCount=4};card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));card.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,170));stateLabel.Font=new Font("Segoe UI",16,FontStyle.Bold);stateLabel.AutoSize=true;stateLabel.Dock=caption.Dock=metrics.Dock=message.Dock=DockStyle.Fill;caption.AutoEllipsis=true;message.ForeColor=Color.FromArgb(157,72,28);message.AutoEllipsis=true;card.Controls.Add(stateLabel,0,0);card.Controls.Add(caption,0,1);card.Controls.Add(metrics,0,2);card.Controls.Add(message,0,3);primary=Style.Button("Подключить",async(s,e)=>{try{var phase=J.Text(current,"phase");if(phase=="disconnected"||phase=="")await rpc.Call("connect",J.D("id",Selected()));else await rpc.Call("stop");}catch(Exception ex){Style.Error(this,ex);}},true);primary.Dock=DockStyle.Fill;card.Controls.Add(primary,1,0);card.SetRowSpan(primary,3);connectionAction=Style.Button("Проверить VK",async(sender,e)=>{
+var modes=new FlowLayoutPanel{Dock=DockStyle.Fill};foreach(var pair in new[]{Tuple.Create("Amnezia","amnezia"),Tuple.Create("VK TURN","turn"),Tuple.Create("DNS-туннель","dns")}){var p=pair;var button=Style.Button(p.Item1,async(s,e)=>{mode=p.Item2;modeLoaded=true;Apply(current);try{await rpc.Call("mode",J.D("text",mode));}catch(Exception ex){Style.Error(this,ex);}});modeButtons[p.Item2]=button;modes.Controls.Add(button);}layout.Controls.Add(modes,0,3);profiles.OwnerDraw=true;profiles.DrawColumnHeader+=(s,e)=>e.DrawDefault=true;profiles.DrawSubItem+=DrawProfileCell;var card=new TableLayoutPanel{Dock=DockStyle.Fill,BackColor=Color.White,Padding=new Padding(12),ColumnCount=2,RowCount=1};
+ card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+ card.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,170));
+ card.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+ var statusRows=new TableLayoutPanel{Dock=DockStyle.Fill,Margin=new Padding(0),ColumnCount=1,RowCount=4};
+ statusRows.RowStyles.Add(new RowStyle(SizeType.Absolute,35));
+ statusRows.RowStyles.Add(new RowStyle(SizeType.Absolute,22));
+ statusRows.RowStyles.Add(new RowStyle(SizeType.Absolute,22));
+ statusRows.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+ card.Controls.Add(statusRows,0,0);
+ var buttons=new TableLayoutPanel{Dock=DockStyle.Fill,Margin=new Padding(0),ColumnCount=1,RowCount=2};
+ buttons.RowStyles.Add(new RowStyle(SizeType.Percent,65));
+ buttons.RowStyles.Add(new RowStyle(SizeType.Percent,35));
+ card.Controls.Add(buttons,1,0);
+ stateLabel.Font=new Font("Segoe UI",16,FontStyle.Bold);
+ stateLabel.AutoEllipsis=true;
+ stateLabel.TextAlign=ContentAlignment.MiddleLeft;
+ stateLabel.Dock=caption.Dock=metrics.Dock=message.Dock=DockStyle.Fill;
+ caption.AutoEllipsis=true;
+ message.ForeColor=Color.FromArgb(157,72,28);
+ message.AutoEllipsis=true;
+ statusRows.Controls.Add(stateLabel,0,0);
+ statusRows.Controls.Add(caption,0,1);
+ statusRows.Controls.Add(metrics,0,2);
+ statusRows.Controls.Add(message,0,3);
+ primary=Style.Button("Подключить",async(s,e)=>{try{var phase=J.Text(current,"phase");if(phase=="disconnected"||phase=="")await rpc.Call("connect",J.D("id",Selected()));else await rpc.Call("stop");}catch(Exception ex){Style.Error(this,ex);}},true);SubscriptionDisplay.FillButton(primary);buttons.Controls.Add(primary,0,0);connectionAction=Style.Button("Проверить VK",async(sender,e)=>{
   try {
    if(J.Bool(current,"captcha")) Process.Start(new ProcessStartInfo("explorer.exe","http://localhost:8765/"){UseShellExecute=true});
    else await rpc.Call("reconnect_active");
   }catch(Exception error){Style.Error(this,error);}
  });
- card.Controls.Add(connectionAction,1,3);layout.Controls.Add(card,0,2);profiles.Columns.Add("Профиль",360);profiles.Columns.Add("Источник",150);profiles.Columns.Add("Доступ",100);profiles.SelectedIndexChanged+=async(s,e)=>{if(updating||Selected()=="")return;try{await rpc.Call("select",J.D("id",Selected()));}catch(Exception ex){Style.Error(this,ex);}};profiles.DoubleClick+=async(s,e)=>await EditProfile();layout.Controls.Add(profiles,0,4);var edit=new FlowLayoutPanel{Dock=DockStyle.Fill};edit.Controls.Add(Style.Button("Изменить",async(s,e)=>await EditProfile()));edit.Controls.Add(Style.Button("Удалить",async(s,e)=>{if(Selected()==""||MessageBox.Show(this,"Удалить выбранный профиль?","TnDtun",MessageBoxButtons.YesNo)!=DialogResult.Yes)return;try{await rpc.Call("delete_profile",J.D("id",Selected()));}catch(Exception ex){Style.Error(this,ex);}}));layout.Controls.Add(edit,0,5);var actions=new FlowLayoutPanel{Dock=DockStyle.Fill};actions.Controls.Add(Style.Button("Экспорт копии",async(s,e)=>{var path=Style.Choose(true,"JSON (*.json)|*.json","TnDtun-backup-"+DateTime.Now.ToString("yyyy-MM-dd")+".json");if(path==null)return;if(MessageBox.Show(this,"Копия содержит приватные ключи. Сохранить её в выбранный файл?","TnDtun",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)!=DialogResult.Yes)return;try{await rpc.Call("export",J.D("path",path));MessageBox.Show(this,"Копия сохранена.","TnDtun");}catch(Exception ex){Style.Error(this,ex);}}));actions.Controls.Add(Style.Button("Импорт копии",async(s,e)=>{var path=Style.Choose(false,"JSON (*.json)|*.json");if(path==null||MessageBox.Show(this,"Заменить профили и настройки? VPN отключится. Подписки потребуется активировать заново.","TnDtun",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)!=DialogResult.Yes)return;try{await rpc.Call("import",J.D("path",path,"confirmed",true));}catch(Exception ex){Style.Error(this,ex);}}));layout.Controls.Add(actions,0,6);Controls.Add(layout);tray=new NotifyIcon{Icon=Icon,Text="TnDtun",Visible=true};tray.DoubleClick+=(s,e)=>Restore();var tm=new ContextMenuStrip();tm.Items.Add("Открыть",null,(s,e)=>Restore());tm.Items.Add("Отключить",null,async(s,e)=>{try{await rpc.Call("stop");}catch{}});tm.Items.Add("Выход",null,async(s,e)=>await Exit());tray.ContextMenuStrip=tm;rpc.State+=m=>{if(!IsDisposed&&IsHandleCreated)BeginInvoke((Action)(()=>Apply(m)));};rpc.Fatal+=error=>{if(!IsDisposed&&IsHandleCreated)BeginInvoke((Action)(()=>{current["phase"]="disconnected";current["message"]=error;Apply(current);}));};Shown+=async(s,e)=>{try{Apply(J.Obj(await rpc.Call("state")));if(rpc.TestHome==null&&J.Bool(J.Get(current,"settings"),"autoConnectOnLaunch"))await rpc.Call("connect_saved");}catch(Exception ex){Style.Error(this,ex);}};FormClosing+=(s,e)=>{if(!exiting&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}};Activated+=async(s,e)=>{try{await rpc.Call("sync_wake");}catch{}};
+ var routingActions = new Panel{Dock=DockStyle.Fill,Margin=new Padding(0)};
+ connectionAction.Dock=DockStyle.Fill; connectionAction.AutoSize=false; connectionAction.MinimumSize=Size.Empty;
+ fullTunnel.Dock=DockStyle.Fill;
+ routingActions.Controls.Add(connectionAction);
+ routingActions.Controls.Add(fullTunnel);
+ fullTunnel.CheckedChanged+=async(sender,e)=>await SetTemporaryRouting();
+ Disposed+=(sender,e)=>routingTip.Dispose();
+ buttons.Controls.Add(routingActions,0,1);layout.Controls.Add(card,0,2);profiles.Columns.Add("Профиль",360);profiles.Columns.Add("Источник",150);profiles.Columns.Add("Доступ",100);profiles.SelectedIndexChanged+=async(s,e)=>{if(updating||Selected()=="")return;try{await rpc.Call("select",J.D("id",Selected()));}catch(Exception ex){Style.Error(this,ex);}};profiles.DoubleClick+=async(s,e)=>await EditProfile();layout.Controls.Add(profiles,0,4);var edit=new FlowLayoutPanel{Dock=DockStyle.Fill};edit.Controls.Add(Style.Button("Изменить",async(s,e)=>await EditProfile()));edit.Controls.Add(Style.Button("Удалить",async(s,e)=>{if(Selected()==""||MessageBox.Show(this,"Удалить выбранный профиль?","TnDtun",MessageBoxButtons.YesNo)!=DialogResult.Yes)return;try{await rpc.Call("delete_profile",J.D("id",Selected()));}catch(Exception ex){Style.Error(this,ex);}}));layout.Controls.Add(edit,0,5);var actions=new FlowLayoutPanel{Dock=DockStyle.Fill};actions.Controls.Add(Style.Button("Экспорт копии",async(s,e)=>{var path=Style.Choose(true,"JSON (*.json)|*.json","TnDtun-backup-"+DateTime.Now.ToString("yyyy-MM-dd")+".json");if(path==null)return;if(MessageBox.Show(this,"Копия содержит приватные ключи. Сохранить её в выбранный файл?","TnDtun",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)!=DialogResult.Yes)return;try{await rpc.Call("export",J.D("path",path));MessageBox.Show(this,"Копия сохранена.","TnDtun");}catch(Exception ex){Style.Error(this,ex);}}));actions.Controls.Add(Style.Button("Импорт копии",async(s,e)=>{var path=Style.Choose(false,"JSON (*.json)|*.json");if(path==null||MessageBox.Show(this,"Заменить профили и настройки? VPN отключится. Подписки потребуется активировать заново.","TnDtun",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)!=DialogResult.Yes)return;try{await rpc.Call("import",J.D("path",path,"confirmed",true));}catch(Exception ex){Style.Error(this,ex);}}));layout.Controls.Add(actions,0,6);Controls.Add(layout);tray=new NotifyIcon{Icon=Icon,Text="TnDtun",Visible=true};tray.DoubleClick+=(s,e)=>Restore();var tm=new ContextMenuStrip();tm.Items.Add("Открыть",null,(s,e)=>Restore());tm.Items.Add("Отключить",null,async(s,e)=>{try{await rpc.Call("stop");}catch{}});tm.Items.Add("Выход",null,async(s,e)=>await Exit());tray.ContextMenuStrip=tm;rpc.State+=m=>{if(!IsDisposed&&IsHandleCreated)BeginInvoke((Action)(()=>Apply(m)));};rpc.Fatal+=error=>{if(!IsDisposed&&IsHandleCreated)BeginInvoke((Action)(()=>{current["phase"]="disconnected";current["message"]=error;Apply(current);}));};Shown+=async(s,e)=>{try{Apply(J.Obj(await rpc.Call("state")));if(rpc.TestHome==null&&J.Bool(J.Get(current,"settings"),"autoConnectOnLaunch"))await rpc.Call("connect_saved");}catch(Exception ex){Style.Error(this,ex);}};FormClosing+=(s,e)=>{if(!exiting&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}};Activated+=async(s,e)=>{try{await rpc.Call("sync_wake");}catch{}};
  Apply(r.Last);}
  public void ShowMode(string value){mode=value;modeLoaded=true;Apply(current);}public void Restore(){Show();WindowState=FormWindowState.Normal;Activate();}string Selected(){return profiles.SelectedItems.Count>0?Convert.ToString(profiles.SelectedItems[0].Tag):"";}public void Apply(Dictionary<string,object> m){current=m;if(!modeLoaded&&J.Text(m,"mode")!=""){mode=J.Text(m,"mode");modeLoaded=true;}foreach(var pair in modeButtons){pair.Value.BackColor=pair.Key==mode?Style.Blue:Color.White;pair.Value.ForeColor=pair.Key==mode?Color.White:Style.Ink;}RefreshProfiles(m);var subscriptions=J.Rows(J.Get(m,"subscriptions"));
  var latest=subscriptions.OrderByDescending(sub=>J.Num(sub,"lastSync")).FirstOrDefault();
  subscriptionTime.Text=latest==null?"":SubscriptionDisplay.LocalTime(latest);
  refreshSubscriptions.Enabled=!refreshingSubscriptions&&subscriptions.Length>0;
- string phase=J.Text(m,"phase");var names=new Dictionary<string,string>{{"preparing","Подготовка"},{"connecting","Подключение…"},{"connected","Подключено"},{"recovering","Восстановление TURN…"},{"disconnecting","Отключение…"}};stateLabel.Text=names.ContainsKey(phase)?names[phase]:"Отключено";
+ string phase=J.Text(m,"phase");var names=new Dictionary<string,string>{{"preparing","Подготовка"},{"connecting","Подключение…"},{"connected","Подключено"},{"recovering","Восстановление…"},{"disconnecting","Отключение…"},{"switching_routes","Применение маршрутов…"},{"waiting_network","Жду сеть…"},{"retry_wait","Ожидание восстановления…"}};stateLabel.Text=names.ContainsKey(phase)?names[phase]:"Отключено";
  bool captcha=J.Bool(m,"captcha");
  bool reconnect=phase=="connected"&&J.Bool(m,"reconnectRecommended");
  connectionAction.Text=captcha?"Проверить VK":"Переподключить";
  connectionAction.Visible=captcha||reconnect;
+ applyingRouting=true;
+ try{
+  fullTunnel.Visible=J.Bool(m,"fullTunnelSupported")&&!captcha&&!reconnect;
+  fullTunnel.Enabled=phase=="connected"&&!J.Bool(m,"routingPending")&&!requestingRouting;
+  fullTunnel.Checked=J.Bool(m,"temporaryFullTunnel");
+  long expiry=J.Num(m,"fullTunnelUntil");
+  string help=!fullTunnel.Checked?"Временно отправлять весь интернет-трафик через VPN":
+   expiry>0?"Возврат сплит-туннеля в "+DateTimeOffset.FromUnixTimeSeconds(expiry).ToLocalTime().ToString("HH:mm"):
+   "Сплит-туннель вернётся при отключении";
+  if(routingTip.GetToolTip(fullTunnel)!=help)routingTip.SetToolTip(fullTunnel,help);
+ }finally{applyingRouting=false;}
+
  primary.Text=phase=="disconnected"||phase==""?"Подключить":"Отключить";primary.Enabled=phase!="disconnecting"&&(Selected()!=""||phase!="disconnected"&&phase!="");caption.Text="Профиль: "+J.Rows(J.Get(m,"profiles")).Where(p=>J.Text(p,"id")== (J.Text(m,"active")!=""?J.Text(m,"active"):Selected())).Select(p=>J.Text(p,"title")).FirstOrDefault();metrics.AutoEllipsis=true;
  metrics.Text="↓ "+Style.Bytes(J.Num(m,"downRate"))+"/с    ↑ "+Style.Bytes(J.Num(m,"upRate"))+
   "/с    Всего "+Style.Bytes(J.Num(m,"up")+J.Num(m,"down"))+"    "+(J.Num(m,"latency")>0?J.Num(m,"latency")+" мс":"— мс");message.Text=profiles.Items.Count==0?"Откройте «Подписки», чтобы добавить подключения.":J.Bool(m,"captcha")?"Требуется проверка VK — нажмите «Проверить VK»":reconnect?"Переподключитесь, чтобы применить изменения.":J.Text(m,"message");tray.Text="TnDtun · "+stateLabel.Text;}
+ async Task SetTemporaryRouting(){
+  if(applyingRouting||requestingRouting)return;
+  requestingRouting=true;fullTunnel.Enabled=false;
+  try{await rpc.Call("temporary_full_tunnel",J.D("enabled",fullTunnel.Checked));}
+  catch(Exception error){
+   if(!IsDisposed)Style.Error(this,error);
+  }finally{
+   requestingRouting=false;
+   if(!IsDisposed)Apply(rpc.Last);
+  }
+ }
  async Task RefreshSubscriptions(){
   if(refreshingSubscriptions)return;
   refreshingSubscriptions=true;refreshSubscriptions.Enabled=false;
