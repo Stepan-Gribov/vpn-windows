@@ -1,0 +1,11 @@
+#!/bin/sh
+
+case "$2" in
+    https://github.com/Stepan-Gribov/vpn-windows.git|https://github.com/Stepan-Gribov/vpn-windows)
+        exit 0
+        ;;
+    *)
+        printf '%s\n' 'Push blocked: Windows sources must go to Stepan-Gribov/vpn-windows.' >&2
+        exit 1
+        ;;
+esac
