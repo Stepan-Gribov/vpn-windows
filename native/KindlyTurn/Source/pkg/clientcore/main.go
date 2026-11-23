@@ -21,6 +21,9 @@ import (
 	"net"
 	"net/http"
 	neturl "net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -807,6 +810,22 @@ func loadVKAppCredentials() []VKCredentials {
 	var result []VKCredentials
 	if json.Unmarshal(vkAppConfig, &result) != nil {
 		return nil
+	}
+	if len(result) == 0 && runtime.GOOS == "windows" {
+		path := os.Getenv("TNDTUN_VK_APP_CONFIG")
+		if !filepath.IsAbs(path) {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer file.Close()
+		const limit = 32 << 10
+		data, err := io.ReadAll(io.LimitReader(file, limit+1))
+		if err != nil || len(data) > limit || json.Unmarshal(data, &result) != nil {
+			return nil
+		}
 	}
 	return result
 }

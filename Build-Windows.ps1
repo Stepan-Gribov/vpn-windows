@@ -1,8 +1,21 @@
-param([switch]$RestoreDependencies, [string]$PanelBootstrap, [string]$VKAppConfig)
+param([switch]$RestoreDependencies, [switch]$PrivateBuild, [string]$PanelBootstrap, [string]$VKAppConfig)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
 $root = $PSScriptRoot
+if (!$PrivateBuild -and ($PanelBootstrap -or $VKAppConfig)) {
+    throw 'Local configuration requires -PrivateBuild.'
+}
+$vkSource = 'native\KindlyTurn\Source\pkg\clientcore\vk-apps.json'
+if (!$PrivateBuild -and (Get-Content -LiteralPath (Join-Path $root $vkSource) -Raw).Trim() -cne '[]') {
+    throw 'Public builds require an empty bundled VK application list.'
+}
+if (!$PrivateBuild) {
+    $env:GOENV = 'off'
+    $env:GOFLAGS = ''
+}
+$dist = Join-Path $root 'dist'
+if ($PrivateBuild) { $dist = Join-Path $dist 'private' }
 . (Join-Path $root 'tools\Build-Metadata.ps1')
 $project = Read-ProjectMetadata $root
 $engine = Join-Path $root 'native\CombinedXray'
@@ -69,16 +82,19 @@ if ($RestoreDependencies) {
     if ($LASTEXITCODE) { throw 'Pinned dependency restore failed' }
 }
 $metadata = New-BuildMetadata $project $root $compiler
+$metadata.distribution = if ($PrivateBuild) { 'private' } else { 'public' }
 $metadataDir = Join-Path $root '.build\build-tools'
 New-Item -ItemType Directory -Force $metadataDir | Out-Null
 $overrides = @{}
-$localPanel = Join-Path $root '.private\panel-bootstrap.json'
-$localVK = Join-Path $root '.private\vk-apps.json'
-if (!$PanelBootstrap -and (Test-Path -LiteralPath $localPanel)) { $PanelBootstrap = $localPanel }
-if (!$VKAppConfig -and (Test-Path -LiteralPath $localVK)) { $VKAppConfig = $localVK }
+if ($PrivateBuild) {
+    $localPanel = Join-Path $root '.private\panel-bootstrap.json'
+    $localVK = Join-Path $root '.private\vk-apps.json'
+    if (!$PanelBootstrap -and (Test-Path -LiteralPath $localPanel)) { $PanelBootstrap = $localPanel }
+    if (!$VKAppConfig -and (Test-Path -LiteralPath $localVK)) { $VKAppConfig = $localVK }
+}
 foreach ($entry in @(
     @{Input=$PanelBootstrap; Source='native\CombinedXray\internal\desktop\bootstrap.json'},
-    @{Input=$VKAppConfig; Source='native\KindlyTurn\Source\pkg\clientcore\vk-apps.json'}
+    @{Input=$VKAppConfig; Source=$vkSource}
 )) {
     if (!$entry.Input) { continue }
     $file = Get-Item -LiteralPath $entry.Input
@@ -93,7 +109,7 @@ if ($overrides.Count) {
 }
 $assemblyInfo = Join-Path $metadataDir 'AssemblyInfo.cs'
 Write-BuildAssemblyInfo $assemblyInfo $metadata
-$dest = Join-Path $root ('dist\TnDtun-'+$project.version+'-'+$project.target)
+$dest = Join-Path $dist ('TnDtun-'+$project.version+'-'+$project.target)
 New-Item -ItemType Directory -Force $dest | Out-Null
 $linker = '-s -w -X kindlyvpn/native/internal/desktop.Version='+$metadata.version+' -X kindlyvpn/native/internal/desktop.Build='+$metadata.buildId
 Write-Host ('Building TnDtun '+$metadata.version+' / '+$metadata.buildId)
@@ -114,7 +130,7 @@ $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 $metadata.artifact = $zip
 $metadata.sha256 = $zipHash
 $metadata.bytes = (Get-Item -LiteralPath $zip).Length
-Write-BuildJson (Join-Path $root 'dist\last-build.json') $metadata
+Write-BuildJson (Join-Path $dist 'last-build.json') $metadata
 [IO.File]::WriteAllText(($zip+'.sha256'), $zipHash+'  '+[IO.Path]::GetFileName($zip)+[Environment]::NewLine)
 Write-Host ('SHA256: '+$zipHash)
 Write-Host "Ready: $zip"

@@ -1,9 +1,9 @@
 [CmdletBinding(SupportsShouldProcess)]
-param([string]$Archive)
+param([string]$Archive, [string]$NotesFile)
 
 $ErrorActionPreference = 'Stop'
 $sourceRepo = 'Stepan-Gribov/vpn-windows'
-$buildsRepo = 'Stepan-Gribov/vpn-builds'
+$ProgressPreference = 'SilentlyContinue'
 $checksumName = 'SHA256SUMS.txt'
 
 function Invoke-GitHub([string[]]$Arguments) {
@@ -22,7 +22,7 @@ function Get-Release([string]$Repo, [string]$Tag) {
         "repos/$Repo/releases?per_page=100", '--jq', '.[].tag_name')
     if ($Tag -in $tags) {
         Invoke-GitHub @('release', 'view', $Tag, '--repo', "github.com/$Repo",
-            '--json', 'assets,isDraft,url') | ConvertFrom-Json
+            '--json', 'assets,isDraft,targetCommitish') | ConvertFrom-Json
     }
 }
 
@@ -53,8 +53,22 @@ $zip = [IO.Compression.ZipFile]::OpenRead($file.FullName)
 try {
     $root = $file.BaseName
     $entries = @{}
+    $packageFiles = @('TnDtun.exe', 'TnDtun.Engine.exe', 'wintun.dll', 'TnDtun.ico', 'BUILD-INFO.json',
+        'Install-Shortcuts.ps1', 'Remove-Shortcuts.ps1', 'LICENSE', 'WINTUN-LICENSE.txt',
+        'START-RU.md', 'VALIDATION.md', 'SHA256SUMS.txt')
+    $licenseFile = '^(?:[A-Za-z0-9_][A-Za-z0-9_.-]*/)*(?:LICENSE[0-9A-Za-z_.-]*|COPYING|AUTHORS|PATENTS|NOTICE(?:\.txt)?|GO-BSD-LICENSE|DEPENDENCIES\.json|THIRD_PARTY(?:_NOTICES)?\.md|UPSTREAM-README\.md)$'
     foreach ($entry in $zip.Entries) {
-        $entries[$entry.FullName.Replace('\', '/')] = $entry
+        $path = $entry.FullName.Replace('\', '/')
+        if (!$path.StartsWith("$root/", [StringComparison]::Ordinal) -or $entries.ContainsKey($path)) {
+            throw 'Unexpected or duplicate path in the release ZIP.'
+        }
+        $name = $path.Substring($root.Length + 1)
+        $license = $name -match '^licenses/(.*)$' -and $Matches[1] -cmatch $licenseFile
+        $directory = !$entry.Length -and $name -cmatch '^(?:licenses/(?:[A-Za-z0-9_][A-Za-z0-9_.-]*/)*)?$'
+        if ($name -cnotin $packageFiles -and !$license -and !$directory) {
+            throw "Unexpected file in release ZIP: $name"
+        }
+        $entries[$path] = $entry
     }
     foreach ($name in @('TnDtun.exe', 'TnDtun.Engine.exe', 'wintun.dll', 'BUILD-INFO.json')) {
         if (!$entries["$root/$name"].Length) { throw "Missing or empty file in ZIP: $name" }
@@ -64,6 +78,9 @@ try {
     finally { $reader.Dispose() }
 } finally { $zip.Dispose() }
 
+if ($build.distribution -cne 'public') {
+    throw 'Use a public ZIP built without -PrivateBuild or local configuration.'
+}
 $revision = $build.sourceCommit
 if ($build.product -cne 'TnDtun' -or $build.version -cne $version -or $build.target -cne 'windows-x64' -or
     $build.sourceDirty -isnot [bool] -or $build.sourceDirty -or $revision -cnotmatch $revisionPattern) {
@@ -76,10 +93,8 @@ if ($build.buildId -cnotmatch ('^\d{8}T\d{9}Z-' + $revision.Substring(0, 8) + '$
 if (!(Get-Command gh -ErrorAction SilentlyContinue)) { throw 'Install GitHub CLI and run gh auth login.' }
 $account = Get-GitHubJson 'user'
 $source = Get-GitHubJson "repos/$sourceRepo"
-$builds = Get-GitHubJson "repos/$buildsRepo"
-if ($account.login -cne 'Stepan-Gribov' -or $source.full_name -cne $sourceRepo -or $source.private -ne $false -or
-    $builds.full_name -cne $buildsRepo -or $builds.private -ne $true) {
-    throw 'Sign in as Stepan-Gribov and verify the source and private build repositories.'
+if ($account.login -cne 'Stepan-Gribov' -or $source.full_name -cne $sourceRepo -or $source.private -ne $false) {
+    throw 'Sign in as Stepan-Gribov and verify the public Windows repository.'
 }
 $comparison = Get-GitHubJson "repos/$sourceRepo/compare/$revision...$($source.default_branch)"
 if ($comparison.status -notin @('identical', 'ahead')) { throw 'Push the source commit to the default branch first.' }
@@ -92,36 +107,42 @@ $tagRef = Get-GitHubJson "repos/$sourceRepo/git/matching-refs/tags/$tag" | Where
 if ($tagRef -and (Get-GitHubJson "repos/$sourceRepo/commits/$tag").sha -cne $revision) {
     throw 'The public source tag already points to a different commit.'
 }
-$public = Get-Release $sourceRepo $tag
-if ($public -and ($public.isDraft -or !$tagRef)) { throw 'Review the existing public release before continuing.' }
-$private = Get-Release $buildsRepo $tag
-if (!$PSCmdlet.ShouldProcess("$buildsRepo, $sourceRepo", "Publish or verify $tag")) { return }
+$release = Get-Release $sourceRepo $tag
+if ($release -and !$tagRef -and (!$release.isDraft -or $release.targetCommitish -cne $revision)) {
+    throw 'The existing release does not identify the expected source commit.'
+}
+if ($NotesFile) { $NotesFile = (Get-Item -LiteralPath $NotesFile).FullName }
+if (!$PSCmdlet.ShouldProcess($sourceRepo, "Publish or verify $tag")) { return }
 
 $title = "TnDtun $version (Windows x64)"
 $releaseType = @()
 if ($version.Contains('-')) { $releaseType += '--prerelease' }
 $sourceUrl = "https://github.com/$sourceRepo"
-$privateUrl = "https://github.com/$buildsRepo/releases/tag/$tag"
-$assetRepo = "github.com/$buildsRepo"
+$releaseUrl = "$sourceUrl/releases/tag/$tag"
+$downloadUrl = "$sourceUrl/releases/download/$tag/$($file.Name)"
+$assetRepo = "github.com/$sourceRepo"
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('tndtun-release-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $temp | Out-Null
 try {
-    if (!$private) {
-        $notes = "Extract the ZIP and run TnDtun.exe.`n`nSource: $sourceUrl/tree/$tag`n`nBuild: $($build.buildId)`n`nSHA-256: $hash"
-        Invoke-GitHub (@('release', 'create', $tag, '--repo', $assetRepo, '--draft', '--title', $title,
-            '--notes', $notes) + $releaseType) | Out-Null
-        $private = Get-Release $buildsRepo $tag
-        if (!$private) { throw 'The private draft could not be read after creation.' }
+    if (!$release) {
+        $tagOptions = @('--target', $revision)
+        if ($tagRef) { $tagOptions = @('--verify-tag') }
+        $notesOptions = @('--notes', "[Build instructions]($sourceUrl/blob/$tag/BUILD-RU.md)", '--generate-notes')
+        if ($NotesFile) { $notesOptions = @('--notes-file', $NotesFile) }
+        Invoke-GitHub (@('release', 'create', $tag, '--repo', $assetRepo, '--draft', '--title', $title) +
+            $tagOptions + $notesOptions + $releaseType) | Out-Null
+        $release = Get-Release $sourceRepo $tag
+        if (!$release -or !$release.isDraft) { throw 'The release draft could not be read after creation.' }
     }
 
     $download = Join-Path $temp 'download'
     New-Item -ItemType Directory -Path $download | Out-Null
-    $hasChecksum = $checksumName -in $private.assets.name
+    $hasChecksum = $checksumName -in $release.assets.name
     if ($hasChecksum) {
         Invoke-GitHub @('release', 'download', $tag, '--repo', $assetRepo, '--pattern', $checksumName, '--dir', $download)
         Assert-Checksum (Join-Path $download $checksumName) $file.Name $hash
     }
-    if ($file.Name -notin $private.assets.name) {
+    if ($file.Name -notin $release.assets.name) {
         Invoke-GitHub @('release', 'upload', $tag, '--repo', $assetRepo, $file.FullName)
     }
     Invoke-GitHub @('release', 'download', $tag, '--repo', $assetRepo, '--pattern', $file.Name, '--dir', $download)
@@ -135,16 +156,19 @@ try {
         Assert-Checksum (Join-Path $download $checksumName) $file.Name $hash
     }
 
-    if ($private.isDraft) { Invoke-GitHub @('release', 'edit', $tag, '--repo', $assetRepo, '--draft=false') | Out-Null }
-    if (!$public) {
-        $notes = "[Windows x64 ZIP (private release)]($privateUrl)`n`n[Build instructions]($sourceUrl/blob/$tag/BUILD-RU.md)"
-        $tagOption = @('--target', $revision)
-        if ($tagRef) { $tagOption = @('--verify-tag') }
-        Invoke-GitHub (@('release', 'create', $tag, '--repo', "github.com/$sourceRepo", '--title', $title,
-            '--notes', $notes, '--generate-notes') + $tagOption + $releaseType) | Out-Null
+    if ($release.isDraft) {
+        Invoke-GitHub @('release', 'edit', $tag, '--repo', $assetRepo, '--draft=false') | Out-Null
+    }
+    if ((Get-GitHubJson "repos/$sourceRepo/commits/$tag").sha -cne $revision) {
+        throw 'The published tag does not point to the build commit.'
+    }
+    $anonymous = Join-Path $temp 'anonymous.zip'
+    Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $anonymous
+    if ((Get-FileHash -LiteralPath $anonymous -Algorithm SHA256).Hash -ne $hash) {
+        throw 'The anonymous download does not match the local build.'
     }
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
 
 Write-Host "SHA-256 verified: $hash"
-Write-Host "Download: $privateUrl"
-Write-Host "Release: $sourceUrl/releases/tag/$tag"
+Write-Host "Download: $downloadUrl"
+Write-Host "Release: $releaseUrl"

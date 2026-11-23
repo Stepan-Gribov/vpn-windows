@@ -119,22 +119,33 @@ def licenses():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--windows-host', required=True, help='Existing SSH host with Windows Framework csc.exe')
+    ap.add_argument('--private-build', action='store_true', help='Use local service configuration and write to dist/private')
     args = ap.parse_args()
+    vk_source = 'native/KindlyTurn/Source/pkg/clientcore/vk-apps.json'
+    if not args.private_build and (ROOT / vk_source).read_text().strip() != '[]':
+        raise ValueError('Public builds require an empty bundled VK application list')
+    if not args.private_build:
+        ENV.update(GOENV='off', GOFLAGS='')
     metadata = build_metadata()
+    metadata['distribution'] = 'private' if args.private_build else 'public'
     metadata['csharpCompiler'] = ps(args.windows_host, r"[Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe')).FileVersion", capture_output=True, text=True).stdout.strip()
     run(['python3', str(ROOT / 'tools/prepare_native.py')])
-    dest = ROOT / 'dist' / NAME
+    dist = ROOT / 'dist'
+    if args.private_build:
+        dist /= 'private'
+    dest = dist / NAME
     dest.mkdir(parents=True, exist_ok=True)
     overrides = {}
-    for config, source in (
-        ('panel-bootstrap.json', 'native/CombinedXray/internal/desktop/bootstrap.json'),
-        ('vk-apps.json', 'native/KindlyTurn/Source/pkg/clientcore/vk-apps.json'),
-    ):
-        filename = ROOT / '.private' / config
-        if filename.is_file():
-            if not 2 <= filename.stat().st_size <= 32768:
-                raise ValueError('Invalid local configuration size')
-            overrides[str(ROOT / source)] = str(filename)
+    if args.private_build:
+        for config, source in (
+            ('panel-bootstrap.json', 'native/CombinedXray/internal/desktop/bootstrap.json'),
+            ('vk-apps.json', vk_source),
+        ):
+            filename = ROOT / '.private' / config
+            if filename.is_file():
+                if not 2 <= filename.stat().st_size <= 32768:
+                    raise ValueError('Invalid local configuration size')
+                overrides[str(ROOT / source)] = str(filename)
     build_options = []
     if overrides:
         overlay = ROOT / '.build' / 'source-overlay.json'
@@ -165,8 +176,8 @@ def main():
     (dest/'BUILD-INFO.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2)+'\n')
     hashes = {str(p.relative_to(dest)):sha(p) for p in sorted(dest.rglob('*')) if p.is_file() and p.name!='SHA256SUMS.txt'}
     (dest/'SHA256SUMS.txt').write_text(''.join(f'{v}  {k}\n' for k,v in hashes.items()))
-    output = ROOT/'dist'/(NAME+'.zip');archive(dest,output,NAME)
-    source = ROOT/'dist'/(NAME+'-source.zip')
+    output = dist / (NAME+'.zip');archive(dest,output,NAME)
+    source = dist / (NAME+'-source.zip')
     allowed = ('app','tools','native','patches','resources','licenses','.build','.vscode')
     with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         files = [p for name in allowed for p in (ROOT/name).rglob('*') if p.is_file()]
@@ -176,8 +187,10 @@ def main():
             if p.name == 'source-overlay.json' or any(v in p.parts for v in ('__pycache__','.git','build-tools')) or p.suffix in ('.pyc','.exe','.log'):
                 continue
             z.write(p,str(Path('TnDtun-Windows-source')/p.relative_to(ROOT)))
-    (ROOT/'dist/SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.name}\n' for p in (output,source)))
-    (ROOT/'dist/last-build.json').write_text(json.dumps(dict(metadata, artifact=str(output), sha256=sha(output), bytes=output.stat().st_size), ensure_ascii=False, indent=2)+'\n')
+    checksum = f'{sha(output)}  {output.name}\n'
+    output.with_suffix('.zip.sha256').write_text(checksum)
+    (dist / 'SHA256SUMS.txt').write_text(checksum + f'{sha(source)}  {source.name}\n')
+    (dist / 'last-build.json').write_text(json.dumps(dict(metadata, artifact=str(output), sha256=sha(output), bytes=output.stat().st_size), ensure_ascii=False, indent=2)+'\n')
     print(json.dumps({'app':str(output),'app_bytes':output.stat().st_size,'source':str(source),'source_bytes':source.stat().st_size},ensure_ascii=False,indent=2))
 
 

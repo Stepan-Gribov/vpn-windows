@@ -2,18 +2,19 @@
   "api_version": 1,
   "package_schema": 1,
   "algorithm": "Ed25519",
-  "api_base": "https://panel.example.invalid/v1",
-  "alternate_api_bases": [
-    "https://backup.example.invalid/v1"
-  ],
-  "key_id": "0000000000000000",
-  "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "key_id": "6cac6c14e82c8d30",
+  "public_key": "3Up_0haYQdO1fPwWZNGCe63lEg7-WKtfc8GABSRCQ10",
+  "api_base": "https://myyndxcldst.mooo.com/v1",
   "dns_transport": {
-    "domain": "dns.example.invalid",
-    "publicKey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "domain": "t.admnpnl.com",
+    "publicKey": "b7a69cd3fb967c3bdf2708e2e91a16196612991584d5fc23533b82ac2ec5c929",
     "resolver": "1.1.1.1:53",
     "sessionCount": 4,
-    "autoDetectResolver": true,
-    "savedResolvers": []
-  }
+    "autoDetectResolver": true
+  },
+  "maximum_package_bytes": 8388608,
+  "alternate_api_bases": [
+    "https://158.160.158.67:57211/v1",
+    "https://151.243.247.95:57211/v1"
+  ]
 }
