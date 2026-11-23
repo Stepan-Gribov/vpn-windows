@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -130,8 +131,7 @@ func TestManagedSOCKSParsesDestinationWithoutLocalDNS(t *testing.T) {
 // with SOCKS and SSH upstreams, including bytes through Xray's SOCKS endpoint.
 func TestManagedDNSRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	// The Windows test host deliberately has no Go SDK. Accept a fixture
-	// cross-compiled from the pinned local source, rather than installing one.
+	// Accept a prebuilt fixture on hosts without a Go SDK.
 	binary := os.Getenv("TNDTUN_TEST_DNSTT_SERVER")
 	if binary == "" {
 		if testing.Short() {
@@ -141,7 +141,11 @@ func TestManagedDNSRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		binary = filepath.Join(dir, "dnstt-server")
+		name := "dnstt-server"
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		binary = filepath.Join(dir, name)
 		build := exec.Command("go", "build", "-o", binary, "./dnstt-server")
 		build.Dir = strings.TrimSpace(string(module))
 		if out, err := build.CombinedOutput(); err != nil {
