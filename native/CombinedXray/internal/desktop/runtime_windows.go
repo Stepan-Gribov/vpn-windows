@@ -238,7 +238,6 @@ func connectionFingerprint(p Profile, settings Settings) [32]byte {
 	config := map[string]any{"profile": p, "ipv6": settings.IPv6, "dns": settings.Servers, "split": settings.Split}
 	if p.Mode == "turn" {
 		config["channels"] = NormalizeTurnSessionCount(settings.TurnSessionCount)
-		config["autoCaptcha"] = settings.AutoCaptcha
 	}
 	return sha256.Sum256(Pack(config))
 }
@@ -318,7 +317,7 @@ func helper(p Profile, s Settings, n Network) error {
 	}
 	var v any
 	if p.Mode == "turn" {
-		v = map[string]any{"provider": "vk", "vk_link": p.CallLink, "peer_addr": p.Server, "session_count": NormalizeTurnSessionCount(s.TurnSessionCount), "use_udp": true, "listen": "127.0.0.1:9000", "wrap_key": p.WrapKey, "auto_captcha": s.AutoCaptcha}
+		v = map[string]any{"provider": "vk", "vk_link": p.CallLink, "peer_addr": p.Server, "session_count": NormalizeTurnSessionCount(s.TurnSessionCount), "use_udp": true, "listen": "127.0.0.1:9000", "wrap_key": p.WrapKey}
 	} else {
 		d := p.DNS
 		rs := []string{}

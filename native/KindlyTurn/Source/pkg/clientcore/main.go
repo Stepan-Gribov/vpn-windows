@@ -80,6 +80,8 @@ func debugf(format string, v ...any) {
 	}
 }
 
+const allowAutomaticCaptcha = runtime.GOOS != "windows"
+
 type captchaSolveMode int
 
 const (
@@ -1230,6 +1232,9 @@ func getTokenChain(ctx context.Context, link string, streamID int, creds VKCrede
 
 				switch solveMode {
 				case captchaSolveModeAuto:
+					if !allowAutomaticCaptcha {
+						return "", "", nil, errors.New("VK requires manual verification")
+					}
 					if captchaErr.SessionToken != "" && captchaErr.RedirectURI != "" {
 						successToken, solveErr = solveVkCaptcha(ctx, captchaErr, streamID, client, profile, false)
 						if solveErr != nil {
@@ -1239,6 +1244,9 @@ func getTokenChain(ctx context.Context, link string, streamID int, creds VKCrede
 						solveErr = fmt.Errorf("missing fields for auto solve")
 					}
 				case captchaSolveModeSliderPOC:
+					if !allowAutomaticCaptcha {
+						return "", "", nil, errors.New("VK requires manual verification")
+					}
 					if captchaErr.SessionToken != "" && captchaErr.RedirectURI != "" {
 						successToken, solveErr = solveVkCaptcha(ctx, captchaErr, streamID, client, profile, true)
 						if solveErr != nil {
@@ -2238,7 +2246,7 @@ func Run(ctx context.Context, cfg Config) error {
 	streamsPerCache = cfg.StreamsPerCred
 
 	isDebug = cfg.Debug
-	manualCaptcha = cfg.ManualCaptcha
+	manualCaptcha = !allowAutomaticCaptcha || cfg.ManualCaptcha
 	captchaSolverVersion = strings.ToLower(strings.TrimSpace(cfg.CaptchaSolver))
 	if captchaSolverVersion != "v1" && captchaSolverVersion != "v2" {
 		captchaSolverVersion = "v2"

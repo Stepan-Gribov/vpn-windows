@@ -110,7 +110,7 @@ func UUID() string {
 	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 }
 func DefaultState() State {
-	return State{AppVersion: Version, AppBuild: Build, Created: time.Now().UTC().Format(time.RFC3339), Format: "TnDtun-backup", Schema: 1, Mode: "amnezia", Profiles: []Profile{}, Installation: UUID(), Settings: Settings{AutoCaptcha: true, AutoRecovery: true, Interval: 30, Servers: []string{"1.1.1.1:53", "1.0.0.1:53"}, Saved: []string{}, Split: Split{Mode: "disabled", Bypass: []Entry{}, Tunnel: []Entry{}}}}
+	return State{AppVersion: Version, AppBuild: Build, Created: time.Now().UTC().Format(time.RFC3339), Format: "TnDtun-backup", Schema: 1, Mode: "amnezia", Profiles: []Profile{}, Installation: UUID(), Settings: Settings{AutoRecovery: true, Interval: 30, Servers: []string{"1.1.1.1:53", "1.0.0.1:53"}, Saved: []string{}, Split: Split{Mode: "disabled", Bypass: []Entry{}, Tunnel: []Entry{}}}}
 }
 func Strict(raw []byte, out any, limit int) error {
 	if len(raw) > limit {
