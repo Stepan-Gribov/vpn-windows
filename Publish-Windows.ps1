@@ -91,6 +91,8 @@ if ($build.buildId -cnotmatch ('^\d{8}T\d{9}Z-' + $revision.Substring(0, 8) + '$
 }
 
 if (!(Get-Command gh -ErrorAction SilentlyContinue)) { throw 'Install GitHub CLI and run gh auth login.' }
+$curl = if ($env:OS -eq 'Windows_NT') { 'curl.exe' } else { 'curl' }
+if (!(Get-Command $curl -ErrorAction SilentlyContinue)) { throw 'curl is required to verify the public download.' }
 $account = Get-GitHubJson 'user'
 $source = Get-GitHubJson "repos/$sourceRepo"
 if ($account.login -cne 'Stepan-Gribov' -or $source.full_name -cne $sourceRepo -or $source.private -ne $false) {
@@ -135,25 +137,19 @@ try {
         if (!$release -or !$release.isDraft) { throw 'The release draft could not be read after creation.' }
     }
 
-    $download = Join-Path $temp 'download'
-    New-Item -ItemType Directory -Path $download | Out-Null
-    $hasChecksum = $checksumName -in $release.assets.name
-    if ($hasChecksum) {
-        Invoke-GitHub @('release', 'download', $tag, '--repo', $assetRepo, '--pattern', $checksumName, '--dir', $download)
-        Assert-Checksum (Join-Path $download $checksumName) $file.Name $hash
-    }
-    if ($file.Name -notin $release.assets.name) {
-        Invoke-GitHub @('release', 'upload', $tag, '--repo', $assetRepo, $file.FullName)
-    }
-    Invoke-GitHub @('release', 'download', $tag, '--repo', $assetRepo, '--pattern', $file.Name, '--dir', $download)
-    $downloaded = Get-FileHash -LiteralPath (Join-Path $download $file.Name) -Algorithm SHA256
-    if ($downloaded.Hash -ne $hash) { throw 'The GitHub ZIP differs from the local build. Review the existing release.' }
-    if (!$hasChecksum) {
-        $checksum = Join-Path $temp $checksumName
-        [IO.File]::WriteAllText($checksum, "$hash  $($file.Name)`n")
-        Invoke-GitHub @('release', 'upload', $tag, '--repo', $assetRepo, $checksum)
-        Invoke-GitHub @('release', 'download', $tag, '--repo', $assetRepo, '--pattern', $checksumName, '--dir', $download)
-        Assert-Checksum (Join-Path $download $checksumName) $file.Name $hash
+    $checksum = Join-Path $temp $checksumName
+    Copy-Item -LiteralPath ($file.FullName + '.sha256') -Destination $checksum
+    foreach ($expected in @($file, (Get-Item -LiteralPath $checksum))) {
+        $digest = 'sha256:' + (Get-FileHash -LiteralPath $expected.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $asset = $release.assets | Where-Object { $_.name -ceq $expected.Name }
+        if (!$asset) {
+            Invoke-GitHub @('release', 'upload', $tag, '--repo', $assetRepo, $expected.FullName)
+            $release = Get-Release $sourceRepo $tag
+            $asset = $release.assets | Where-Object { $_.name -ceq $expected.Name }
+        }
+        if ($asset.state -cne 'uploaded' -or $asset.size -ne $expected.Length -or $asset.digest -cne $digest) {
+            throw "GitHub asset differs from the local file: $($expected.Name)"
+        }
     }
 
     if ($release.isDraft) {
@@ -163,7 +159,20 @@ try {
         throw 'The published tag does not point to the build commit.'
     }
     $anonymous = Join-Path $temp 'anonymous.zip'
-    Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $anonymous
+    $deadline = [DateTime]::UtcNow.AddMinutes(5)
+    $stalled = 0
+    $previousBytes = 0
+    do {
+        & $curl -q --http1.1 --fail --silent --show-error --location --connect-timeout 10 --max-time 30 `
+            --continue-at - --output $anonymous $downloadUrl
+        if ($LASTEXITCODE -eq 0) { break }
+        $downloadedBytes = (Get-Item -LiteralPath $anonymous -ErrorAction SilentlyContinue).Length
+        if ($downloadedBytes -gt $previousBytes) { $stalled = 0 } else { $stalled++ }
+        $previousBytes = $downloadedBytes
+        if ($stalled -ge 5 -or [DateTime]::UtcNow -ge $deadline) {
+            throw 'Could not complete the anonymous GitHub download.'
+        }
+    } while ($true)
     if ((Get-FileHash -LiteralPath $anonymous -Algorithm SHA256).Hash -ne $hash) {
         throw 'The anonymous download does not match the local build.'
     }

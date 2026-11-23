@@ -30,4 +30,4 @@
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\Publish-Windows.ps1
 
-Задача прикрепляет ZIP и `SHA256SUMS.txt` к черновику, сверяет скачанный архив, публикует релиз и проверяет скачивание без авторизации. Для изменившегося ZIP используйте новый номер версии. [Windows Releases](https://github.com/Stepan-Gribov/vpn-windows/releases)
+Задача прикрепляет ZIP и `SHA256SUMS.txt` к черновику и сверяет контрольные суммы, которые рассчитал GitHub. После публикации она скачивает ZIP без авторизации через `curl` и сравнивает его с локальной сборкой. Для изменившегося ZIP используйте новый номер версии. [Windows Releases](https://github.com/Stepan-Gribov/vpn-windows/releases)
